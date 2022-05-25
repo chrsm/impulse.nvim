@@ -1,6 +1,6 @@
-import "inspect" as oinspect
-
 inspect = (v) ->
+  oinspect = vim?.inspect or require "inspect"
+
   oinspect v, { newline: "@", indent: "++" }
 
 iter_rtext = (content = {}) ->
@@ -12,16 +12,43 @@ iter_rtext = (content = {}) ->
   unless texts -- probably not gonna happen
     return "no usable content in #{ inspect content }"
 
-  txt = ""
+  txt = {}
   for i, v in ipairs texts
-    txt ..= "#{ v.plain_text }"
+    tc = v.plain_text
+    href = v.href if v.href != vim.NIL
+
+    with? v.annotations
+      if .bold
+        tc = "**#{ tc }**"
+      if .italic
+        tc = "_#{ tc }_"
+      if .underline
+        tc = "<ins>#{ tc }</ins>"
+      if .strikethrough
+        tc = "~~#{ tc }~~"
+      if .code
+        tc = "`#{ tc }`"
+      -- no color kthx
+
+    unless href
+      txt[] = "#{ tc }"
+    else
+      txt[] = "[#{ tc }](#{ href })"
+
   txt
+
+get_file_link = (content) ->
+  if content.type == "external"
+    content.external.url
+  else
+    content.file.url
 
 class Block
   new: (type, properties = {}) =>
     @can_md = false
     @type = type
     @properties = properties
+    @children = properties.children or {}
 
     if @properties
       @content = @properties[@type]
@@ -30,7 +57,11 @@ class Block
   has_children: => @properties.has_children
   to_md: => error "unsupported block->md"
 
+-- absolutely no idea what to do with these
 class Unsupported extends Block
+  new: (props) =>
+    super "unsupported", props
+  to_md: => "[unsupported-#{ @\get_id! }](impulse://unsupported/#{ @\get_id! })"
 
 class Paragraph extends Block
   new: (props) =>
@@ -38,7 +69,7 @@ class Paragraph extends Block
     @can_md = true
 
   to_md: =>
-    iter_rtext @content
+    table.concat (iter_rtext @content)
 
 class Heading1 extends Block
   new: (props) =>
@@ -46,7 +77,10 @@ class Heading1 extends Block
     @can_md = true
 
   to_md: =>
-    "# #{ iter_rtext @content }"
+    table.concat {
+      "# "
+      ...iter_rtext @content
+    }
 
 class Heading2 extends Block
   new: (props) =>
@@ -54,7 +88,10 @@ class Heading2 extends Block
     @can_md = true
 
   to_md: =>
-    "## #{ iter_rtext @content }"
+    table.concat {
+      "## "
+      ...iter_rtext @content
+    }
 
 class Heading3 extends Block
   new: (props) =>
@@ -62,7 +99,10 @@ class Heading3 extends Block
     @can_md = true
 
   to_md: =>
-    "### #{ iter_rtext @content }"
+    table.concat {
+      "### "
+      ...iter_rtext @content
+    }
 
 class BulletedListItem extends Block
   new: (props) =>
@@ -78,7 +118,9 @@ class NumberedListItem extends Block
     @can_md = true
 
   to_md: =>
-    "* #{ iter_rtext @content }"
+    -- these will be auto-renumbered iirc
+    -- it is ugly tho
+    "1. #{ table.concat (iter_rtext @content) }"
 
 class ToDo extends Block
   new: (props) =>
@@ -87,7 +129,7 @@ class ToDo extends Block
 
   to_md: =>
     check = @content.checked and "x" or " "
-    "- [#{ check }] #{ iter_rtext @content }"
+    "- [#{ check }] #{ table.concat (iter_rtext @content) }"
 
 class Toggle extends Block
   new: (props) =>
@@ -95,7 +137,7 @@ class Toggle extends Block
     @can_md = true
 
   to_md: =>
-    "toggle: #{ inspect @content }"
+    table.concat (iter_rtext @content)
 
 class ChildPage extends Block
   new: (props) =>
@@ -103,7 +145,7 @@ class ChildPage extends Block
     @can_md = true
 
   to_md: =>
-    "child_page #{ inspect @content }"
+    "[#{ @content.title }](impulse://page/#{ @\get_id! })"
 
 class ChildDatabase extends Block
   new: (props) =>
@@ -111,7 +153,7 @@ class ChildDatabase extends Block
     @can_md = true
 
   to_md: =>
-    "child_database #{ inspect @content }"
+    "[#{ @content.title }](impulse://database/#{ @\get_id! })"
 
 class Embed extends Block
   new: (props) =>
@@ -119,7 +161,7 @@ class Embed extends Block
     @can_md = true
 
   to_md: =>
-    "embed #{ inspect @content }"
+    "[embed-#{ @\get_id! }](#{ @content.url })"
 
 class Image extends Block
   new: (props) =>
@@ -132,7 +174,7 @@ class Image extends Block
     else
       @content.file.url
 
-    "![image](#{ link })"
+    "![image-#{ @get_id! }](#{ get_file_link @content })"
 
 class Video extends Block
   new: (props) =>
@@ -140,7 +182,7 @@ class Video extends Block
     @can_md = true
 
   to_md: =>
-    "video #{ inspect @content }"
+    "[video-#{ @get_id! }](#{ get_file_link @content })"
 
 class File extends Block
   new: (props) =>
@@ -148,7 +190,7 @@ class File extends Block
     @can_md = true
 
   to_md: =>
-    "file #{ inspect @content }"
+    "[file-#{ @get_id! }](#{ get_file_link @content })"
 
 class Pdf extends Block
   new: (props) =>
@@ -156,7 +198,7 @@ class Pdf extends Block
     @can_md = true
 
   to_md: =>
-    "pdf #{ inspect @content }"
+    "[pdf-#{ @get_id! }](#{ get_file_link @content })"
 
 class Bookmark extends Block
   new: (props) =>
@@ -164,7 +206,7 @@ class Bookmark extends Block
     @can_md = true
 
   to_md: =>
-    ""
+    "[bookmark-#{ @\get_id! }](#{ @content.url })"
 
 class Callout extends Block
   new: (props) =>
@@ -172,7 +214,7 @@ class Callout extends Block
     @can_md = true
 
   to_md: =>
-    "callout #{ inspect @content }"
+    "> #{ inspect (iter_rtext @content) }"
 
 class Quote extends Block
   new: (props) =>
@@ -180,7 +222,7 @@ class Quote extends Block
     @can_md = true
 
   to_md: =>
-    "> #{ iter_rtext @content }"
+    "> #{ table.concat (iter_rtext @content) }"
 
 class Equation extends Block
   new: (props) =>
@@ -188,7 +230,11 @@ class Equation extends Block
     @can_md = true
 
   to_md: =>
-    "equation #{ inspect @content }"
+    {
+      "```impulse://equation/#{ @\get_id! }"
+      "#{ @content.expression }"
+      "```"
+    }
 
 class Divider extends Block
   new: (props) =>
@@ -204,7 +250,10 @@ class TableOfContents extends Block
     @can_md = true
 
   to_md: =>
-    "TableOfContents #{ inspect @content }"
+    --"TableOfContents #{ inspect @properties }"
+    -- skip this for now; it'd require deferring and parsing the whole doc,
+    -- which i don't really feel like doing
+    nil
 
 class Column extends Block
   new: (props) =>
@@ -212,7 +261,9 @@ class Column extends Block
     @can_md = true
 
   to_md: =>
-    "column: #{ inspect @content }"
+    --"column: #{ inspect @content }"
+    -- skip this for now; not sure how to represent this
+    nil
 
 class ColumnList extends Block
   new: (props) =>
@@ -220,7 +271,9 @@ class ColumnList extends Block
     @can_md = true
 
   to_md: =>
-    "ColumnList: #{ inspect @content }"
+    --"ColumnList: #{ inspect @content }"
+    -- skip this for now; not sure how to represent this
+    nil
 
 class LinkPreview extends Block
   new: (props) =>
@@ -228,7 +281,7 @@ class LinkPreview extends Block
     @can_md = true
 
   to_md: =>
-    "LinkPreview #{ inspect @content }"
+    "[linkpreview-#{ @\get_id! }](#{ @content.url }) ++ #{ inspect @properties }"
 
 class SyncedBlock extends Block
   new: (props) =>
@@ -236,7 +289,7 @@ class SyncedBlock extends Block
     @can_md = true
 
   to_md: =>
-    "SyncedBlock #{ inspect @content }"
+    "[syncedblock-#{ @\get_id! }](impulse://block/#{ @\get_id! }) ++ #{ inspect @content }"
 
 class Template extends Block
   new: (props) =>
@@ -244,7 +297,7 @@ class Template extends Block
     @can_md = true
 
   to_md: =>
-    ""
+    "[template-#{ @\get_id! }](impulse://template/#{ @\get_id! }) ++ #{ inspect @content }"
 
 class LinkToPage extends Block
   new: (props) =>
@@ -252,15 +305,14 @@ class LinkToPage extends Block
     @can_md = true
 
   to_md: =>
-    "[link](#{ inspect @content })"
+    "[linktopage-#{ @\get_id! }](#{ inspect @content })"
 
 class Table extends Block
   new: (props) =>
     super "table", props
     @can_md = true
 
-  to_md: =>
-    "table #{ inspect @content }"
+  to_md: => nil
 
 class TableRow extends Block
   new: (props) =>
@@ -268,7 +320,26 @@ class TableRow extends Block
     @can_md = true
 
   to_md: =>
-    "TableRow #{ inspect @content }"
+    cells = @content.cells
+
+    r = {}
+    for v in *cells
+      for vv in *v
+        r[] = vv.plain_text
+
+    "| #{ (table.concat r, " | ") } |"
+
+class Code extends Block
+  new: (props) =>
+    super "code", props
+    @can_md = true
+
+  to_md: =>
+    {
+      "```#{ @content.language }"
+     ...iter_rtext @content
+      "```"
+    }
 
 types =
   paragraph: Paragraph
@@ -279,6 +350,7 @@ types =
   numbered_list_item: NumberedListItem
   to_do: ToDo
   toggle: Toggle
+  code: Code
   child_page: ChildPage
   child_database: ChildDatabase
   embed: Embed

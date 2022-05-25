@@ -1,11 +1,124 @@
 import "http.request" as request
-import "cjson" as cjson
 
-defcfg =
-  user: os.getenv "NOTION_USER"
+import "impulse.api" as Notion
+import "impulse.buffer" as Buffer
+import "impulse.types" as NTypes
+import "impulse.markdown" as to_md
+import "impulse.menu" as menu
 
+buffers = {}
+create_buffer = (block_id) ->
+  buffers[block_id] = Buffer! unless buffers[block_id]
+
+  buffers[block_id]
 
 impulse =
-  api_key: os.getenv "NOTION_SECRET"
+  client: nil
+  -- default impulse config; merged with user choices
+  config:
+    api_key: os.getenv "NOTION_SECRET"
+    always_refetch: false
+
+-- search: use notion's search API to look for a page
+impulse.search = (query = "") ->
+  unless impulse.client
+    error "impulse.nvim: setup must be called first"
+
+  resp = impulse.client\search query
+
+  r = {}
+  for v in *resp.results
+    r[] =
+      id: v.id
+      title: v.properties.title.title[1].plain_text
+      url: v.url
+
+  query = "(none)" unless #query > 0
+  menu.page r, {
+    title: "query results: #{ query }"
+    make_entry: (v) ->
+      { value: v, display: v.title, ordinal: v.title }
+    make_title: (v) ->
+      v.title
+    select: (v) ->
+      b = with create_buffer v.value.id
+        \set_name v.display
+        if \empty! or impulse.config.always_refetch
+          \set_content to_md (impulse._fetch v.value.id)
+        \focus!
+  }
+
+impulse.menu_search = ->
+  menu.input {
+    title: "impulse: Notion Search Query"
+    input_text: "Search Query: "
+    on_submit: (v) ->
+      impulse.search v
+  }
+
+-- (internal) _fetch: retrieve a specific block and all children belonging to it.
+impulse._fetch = (id) ->
+  unless impulse.client
+    error "impulse.nvim: setup must be called first"
+
+  unless id
+    error "impulse.nvim: no block id specified"
+
+  cur, more = 0, false
+  blocks = {}
+  repeat
+    resp = impulse.client\get_blocks id, cur
+
+    for b in *resp.results
+      block = NTypes.to_type b.type, b
+
+      if block\has_children! and block.type != "child_page" and block.type != "child_database"
+        block.children = impulse._fetch b.id
+
+      blocks[] = block
+    
+    more = resp.has_more
+    cur = resp.next_cursor
+  until more == false
+
+  blocks
+
+-- follow_link: jump to a specific page in notion based on an `impulse://page/` link.
+impulse.follow_link = ->
+  -- where are we?
+  ln = vim.api.nvim_get_current_line!
+  col = vim.fn.col "."
+
+  -- we're going to be lazy here and gmatch out links we can handle.
+  name, typ, block_id = nil, nil
+  for v in ln\gmatch "(%[.+%]%(impulse://[^/]+/[^%)]+%))"
+    -- find where this one starts & ends
+    s, e = ln\find v, 1, true -- plain!
+
+    -- are we _inside_ of this link somewhere?
+    if s <= col and e >= col
+      name, typ, block_id = ln\match "%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)"
+
+  unless block_id
+    vim.notify "impulse.nvim: no link found on current line"
+    return
+
+  if typ != "page"
+    error "impulse.nvim: currently, cannot follow link to non-page (#{ typ }, #{ block_id })"
+
+  -- fetch it + all child blocks
+  -- eventually, this should probably swap-to then sync, not what it does rn
+  content = impulse._fetch block_id
+
+  b = with create_buffer block_id
+    \set_name (name or "(no name parsed, report bug)")
+    if \empty! or impulse.config.always_refetch
+      \set_content to_md (impulse._fetch block_id)
+    \focus!
+
+-- setup: configure impulse.
+impulse.setup = (opt = {}) ->
+  impulse.config = vim.tbl_deep_extend "force", impulse.config, opt
+  impulse.client = Notion impulse.config.api_key
 
 export default impulse

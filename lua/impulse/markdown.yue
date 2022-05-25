@@ -1,0 +1,40 @@
+import "impulse.types" as NTypes
+
+to_md = (blocks, ident = 0) ->
+  r = {}
+
+  spc = ""
+  if ident > 0
+    spc = string.rep " ", ident
+
+  for v in *blocks
+    unless v
+      error vim.inspect blocks
+
+    md = v\to_md!
+    continue unless md
+
+    if v.type == "table"
+      -- walk back indent by two; table has children but shouldn't be indented
+      ident -= 2
+
+    if (type md) == "table"
+      r[] = (spc .. ent) for ent in *md
+    else
+      r[] = spc .. md
+
+    if v\has_children! and v.type != "child_page" and v.type != "child_database"
+      rch = to_md v.children, ident + 2
+
+      -- special handling of tables, sry
+      if v.type == "table" and v.content.has_column_header
+        head = "|---"
+        head ..= string.rep "|---", v.content.table_width - 1
+        head ..= "|"
+        table.insert rch, 2, head
+
+      r[] = v for v in *rch
+
+  r
+
+export default to_md

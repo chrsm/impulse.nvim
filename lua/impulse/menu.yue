@@ -1,0 +1,89 @@
+import "plenary.job" as pjob
+import "telescope.actions" as tsactions
+import "telescope.actions.state" as tsactionstate
+import "telescope.finders" as tsfinder
+import "telescope.pickers" as tspicker
+import "telescope.pickers.entry_display" as tsedisp
+import "telescope.previewers" as tspreview
+import "telescope.config" as tsconf
+
+page_menu = (results = {}, opts = nil) ->
+  error "no opts supplied" unless opts
+
+  p = tspicker.new {}, {
+    prompt_title: opts.title
+    title: opts.make_title
+    finder: tsfinder.new_table {
+      :results
+      entry_maker: opts.make_entry
+      title: opts.make_title
+    }
+    previewer: tspreview.new_buffer_previewer {
+      define_preview: (entry, status) =>
+        v =
+          * "id: #{ entry.value.id }"
+          * "url: #{ entry.value.url }"
+          * "title: #{ entry.value.title }"
+
+        vim.api.nvim_buf_set_lines @state.bufnr, 0, -1, true, v
+        vim.api.nvim_win_set_option status.preview_win, 'wrap', true
+    }
+    sorter: tsconf.values.generic_sorter {}
+    attach_mappings: (bufnr, map) ->
+      tsactions.select_default\replace ->
+        tsactions.close bufnr
+        sel = tsactionstate.get_selected_entry!
+        opts.select? sel
+
+      true
+  }
+
+  p\find!
+
+input_menu = (opts) ->
+  unless opts
+    error "impulse.nvim (internal): no `opts` supplied to input_menu"
+
+  has_nui, nui = try require "nui.input"
+  if has_nui
+    ntyp = require "nui.utils.autocmd"
+
+    input = nui {
+      size:
+        width: 50
+        height: 20
+      position:
+        row: 0
+        col: 0
+      relative: "cursor"
+      border:
+        highlight: "ImpulseInputHi"
+        style: "rounded"
+        text:
+          top: opts.title
+          top_align: "center"
+      win_options:
+        winblend: 10
+        winhighlight: "Normal:Normal"
+    }, {
+      prompt: "> "
+      default_value: ""
+      on_submit: (v) ->
+        opts.on_submit v
+    }
+
+    input\mount!
+    input\on ntyp.event.BufLeave, ->
+      input\unmount!
+    input\on ntyp.event.InsertLeave, ->
+      input\unmount!
+  else
+    v = vim.fn.input opts.input_text
+    opts.on_submit v
+
+  nil
+
+export default {
+  page: page_menu
+  input: input_menu
+}

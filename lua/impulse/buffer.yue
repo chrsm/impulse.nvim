@@ -1,0 +1,47 @@
+class Buffer
+  -- new: create a new, empty buffer
+  new: =>
+    vim.cmd [[ enew ]]
+    @buf = vim.api.nvim_get_current_buf!
+
+    vim.cmd [[ setlocal filetype=markdown ]]
+    @\set "buftype", "nofile"
+    --@\set "bufhidden", "wipe"
+    @\set "swapfile", false
+
+  -- get_buf: retrieve the internal vim bufnr
+  get_buf: => @buf
+
+  -- set_content: set the content of this buffer
+  -- if a table is passed, it will be set directly
+  -- if a string is passed, it will split upon newlines
+  set_content: (content) =>
+    if (type content) == "string"
+      oc = content
+      content = {}
+      for v in oc\gmatch "^[\n]+"
+        content[] = v
+
+    vim.api.nvim_buf_set_lines @buf, 0, -1, true, content
+
+  -- empty: check if a buffer is "empty"
+  -- note that this isn't necessarily true, buffers start with 1 line...
+  empty: => (vim.api.nvim_buf_line_count @buf) <= 1
+
+  -- focus: swap to this Buffer
+  focus: =>
+    vim.api.nvim_set_current_buf @buf
+
+  -- delete: remove this Buffer
+  delete: (force = true) =>
+    vim.api.nvim_buf_delete @buf, { :force }
+
+  -- set: set an option on this Buffer
+  set: (name, val) =>
+    vim.api.nvim_buf_set_option @buf, name, val
+
+  -- set_name: set the name of the Buffer
+  set_name: (name = "(no name)") =>
+    vim.api.nvim_buf_set_name @buf, "impulse://#{ name }"
+
+export default Buffer

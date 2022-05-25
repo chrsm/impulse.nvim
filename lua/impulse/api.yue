@@ -1,10 +1,9 @@
-import "cjson" as json
 import "http.request" as request
-import "inspect" as inspect
 
 class Notion
   @base_url: "https://api.notion.com"
   @timeout: 30
+  @page_size: 100
 
   new: (api_key) =>
     @api_key = api_key
@@ -16,11 +15,12 @@ class Notion
       .headers\upsert "user-agent", "impulse.nvim-0.1-alpha"
       .headers\append "x-req-by", "impulse.nvim"
       .headers\append "accept", "application/json"
+      .headers\append "content-type", "application/json"
       .headers\append "authorization", "Bearer #{ @api_key }"
       .headers\append "notion-version", "2022-02-22"
 
       if body
-        json.encode body
+        vim.json.encode body
           |> \set_body
 
     head, resp = req\go timeout
@@ -28,7 +28,7 @@ class Notion
       return error "unable to make request to #{ api }"
     
     resp\get_body_as_string!
-      |> json.decode
+      |> vim.json.decode
 
   -- get_page: retrieve a page's properties
   -- this does NOT get content of the page; use `get_blocks` with the page ID.
@@ -45,59 +45,20 @@ class Notion
 
   -- get_blocks: retrieve all child blocks of a block.
   -- essentially, a page == a block, so you can use this to get a page's content.
-  get_blocks: (parent_id, start_cursor = 0, page_size = 100) =>
+  get_blocks: (parent_id, start_cursor = 0, page_size = @@page_size) =>
     qs = "page_size=#{ page_size }"
     qs ..= "&start_cursor=#{ start_cursor }" if start_cursor > 0
 
     @\_request "v1/blocks/#{ parent_id }/children?#{ qs }"
 
-  -- update_block: update a specific block
-  -- per notion: only text-based & todo blocks can be updated at this time
-  update_block: (id, content = nil) =>
-    error "no content" unless content
-
-    @\_request "v1/blocks/#{ id }", "PATCH", content
-
   -- search: search & filter all pages and databases matching a query
-  search: (query = "", filter = "page") =>
+  search: (query = "", filter = nil) =>
+    unless filter
+      filter =
+        property: "object"
+        value: "page"
+
     -- will need to support pagination
     @\_request "v1/search", "POST", { :query, :filter }
 
-
-n = Notion os.getenv "NOTION_SECRET"
-
---import "impulse.impulse.types" as typ
-import "types" as typ
-
-pgs = n\search "Getting Started"
-
-pg = nil
-for v in *pgs.results
-  print inspect v
-  if v.object == "page" and v.properties.title.title[1].plain_text == "Getting Started"
-    pg = v
-
-unless pg
-  error "no page found"
-
-blocks = n\get_blocks pg.id
---print inspect blocks
-
-to_md = (blocks = {}) ->
-  blocks.results = blocks.results or {}
-
-  for v in *blocks.results
-    b = typ.to_type v.type, v
-    unless b
-      error "wtf #{ v.type }"
-
-    if b
-      print b\to_md!
-
-      -- get all children recursively; skip child pages & dbs (for now? idk)
-      if b\has_children! and b.type != "child_page" and b.type != "child_database"
-        child_blocks = n\get_blocks b\get_id!
-        to_md child_blocks
-
-to_md blocks
-
+export default Notion
