@@ -1,0 +1,11 @@
+import "http.request" as request
+import "cjson" as cjson
+
+defcfg =
+  user: os.getenv "NOTION_USER"
+
+
+impulse =
+  api_key: os.getenv "NOTION_SECRET"
+
+export default impulse

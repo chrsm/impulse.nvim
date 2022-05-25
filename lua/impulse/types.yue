@@ -1,0 +1,312 @@
+import "inspect" as oinspect
+
+inspect = (v) ->
+  oinspect v, { newline: "@", indent: "++" }
+
+iter_rtext = (content = {}) ->
+  texts = if content.rich_text
+    content.rich_text
+  else
+    content.text
+
+  unless texts -- probably not gonna happen
+    return "no usable content in #{ inspect content }"
+
+  txt = ""
+  for i, v in ipairs texts
+    txt ..= "#{ v.plain_text }"
+  txt
+
+class Block
+  new: (type, properties = {}) =>
+    @can_md = false
+    @type = type
+    @properties = properties
+
+    if @properties
+      @content = @properties[@type]
+
+  get_id: => @properties.id
+  has_children: => @properties.has_children
+  to_md: => error "unsupported block->md"
+
+class Unsupported extends Block
+
+class Paragraph extends Block
+  new: (props) =>
+    super "paragraph", props
+    @can_md = true
+
+  to_md: =>
+    iter_rtext @content
+
+class Heading1 extends Block
+  new: (props) =>
+    super "heading_1", props
+    @can_md = true
+
+  to_md: =>
+    "# #{ iter_rtext @content }"
+
+class Heading2 extends Block
+  new: (props) =>
+    super "heading_2", props
+    @can_md = true
+
+  to_md: =>
+    "## #{ iter_rtext @content }"
+
+class Heading3 extends Block
+  new: (props) =>
+    super "heading_3", props
+    @can_md = true
+
+  to_md: =>
+    "### #{ iter_rtext @content }"
+
+class BulletedListItem extends Block
+  new: (props) =>
+    super "bulleted_list_item", props
+    @can_md = true
+
+  to_md: =>
+    "* #{ @content.rich_text[1].plain_text }"
+
+class NumberedListItem extends Block
+  new: (props) =>
+    super "numbered_list_item", props
+    @can_md = true
+
+  to_md: =>
+    "* #{ iter_rtext @content }"
+
+class ToDo extends Block
+  new: (props) =>
+    super "to_do", props
+    @can_md = true
+
+  to_md: =>
+    check = @content.checked and "x" or " "
+    "- [#{ check }] #{ iter_rtext @content }"
+
+class Toggle extends Block
+  new: (props) =>
+    super "toggle", props
+    @can_md = true
+
+  to_md: =>
+    "toggle: #{ inspect @content }"
+
+class ChildPage extends Block
+  new: (props) =>
+    super "child_page", props
+    @can_md = true
+
+  to_md: =>
+    "child_page #{ inspect @content }"
+
+class ChildDatabase extends Block
+  new: (props) =>
+    super "child_database", props
+    @can_md = true
+
+  to_md: =>
+    "child_database #{ inspect @content }"
+
+class Embed extends Block
+  new: (props) =>
+    super "embed", props
+    @can_md = true
+
+  to_md: =>
+    "embed #{ inspect @content }"
+
+class Image extends Block
+  new: (props) =>
+    super "image", props
+    @can_md = true
+
+  to_md: =>
+    link = if @content.type == "external"
+      @content.external.url
+    else
+      @content.file.url
+
+    "![image](#{ link })"
+
+class Video extends Block
+  new: (props) =>
+    super "video", props
+    @can_md = true
+
+  to_md: =>
+    "video #{ inspect @content }"
+
+class File extends Block
+  new: (props) =>
+    super "file", props
+    @can_md = true
+
+  to_md: =>
+    "file #{ inspect @content }"
+
+class Pdf extends Block
+  new: (props) =>
+    super "pdf", props
+    @can_md = true
+
+  to_md: =>
+    "pdf #{ inspect @content }"
+
+class Bookmark extends Block
+  new: (props) =>
+    super "bookmark", props
+    @can_md = true
+
+  to_md: =>
+    ""
+
+class Callout extends Block
+  new: (props) =>
+    super "callout", props
+    @can_md = true
+
+  to_md: =>
+    "callout #{ inspect @content }"
+
+class Quote extends Block
+  new: (props) =>
+    super "quote", props
+    @can_md = true
+
+  to_md: =>
+    "> #{ iter_rtext @content }"
+
+class Equation extends Block
+  new: (props) =>
+    super "equation", props
+    @can_md = true
+
+  to_md: =>
+    "equation #{ inspect @content }"
+
+class Divider extends Block
+  new: (props) =>
+    super "divider", props
+    @can_md = true
+
+  to_md: =>
+    "-------"
+
+class TableOfContents extends Block
+  new: (props) =>
+    super "table_of_contents", props
+    @can_md = true
+
+  to_md: =>
+    "TableOfContents #{ inspect @content }"
+
+class Column extends Block
+  new: (props) =>
+    super "column", props
+    @can_md = true
+
+  to_md: =>
+    "column: #{ inspect @content }"
+
+class ColumnList extends Block
+  new: (props) =>
+    super "column_list", props
+    @can_md = true
+
+  to_md: =>
+    "ColumnList: #{ inspect @content }"
+
+class LinkPreview extends Block
+  new: (props) =>
+    super "link_preview", props
+    @can_md = true
+
+  to_md: =>
+    "LinkPreview #{ inspect @content }"
+
+class SyncedBlock extends Block
+  new: (props) =>
+    super "synced_block", props
+    @can_md = true
+
+  to_md: =>
+    "SyncedBlock #{ inspect @content }"
+
+class Template extends Block
+  new: (props) =>
+    super "template", props
+    @can_md = true
+
+  to_md: =>
+    ""
+
+class LinkToPage extends Block
+  new: (props) =>
+    super "link_to_page", props
+    @can_md = true
+
+  to_md: =>
+    "[link](#{ inspect @content })"
+
+class Table extends Block
+  new: (props) =>
+    super "table", props
+    @can_md = true
+
+  to_md: =>
+    "table #{ inspect @content }"
+
+class TableRow extends Block
+  new: (props) =>
+    super "table_row", props
+    @can_md = true
+
+  to_md: =>
+    "TableRow #{ inspect @content }"
+
+types =
+  paragraph: Paragraph
+  heading_1: Heading1
+  heading_2: Heading2
+  heading_3: Heading3
+  bulleted_list_item: BulletedListItem
+  numbered_list_item: NumberedListItem
+  to_do: ToDo
+  toggle: Toggle
+  child_page: ChildPage
+  child_database: ChildDatabase
+  embed: Embed
+  image: Image
+  video: Video
+  file: File
+  pdf: Pdf
+  bookmark: Bookmark
+  callout: Callout
+  quote: Quote
+  equation: Equation
+  divider: Divider
+  table_of_contents: TableOfContents
+  column: Column
+  column_list: ColumnList
+  link_preview: LinkPreview
+  synced_block: SyncedBlock
+  template: Template
+  link_to_page: LinkToPage
+  table: Table
+  table_row: TableRow
+  unsupported: Unsupported
+
+export default {
+  :types
+  to_type: (typ, props) ->
+    unless types[typ]
+      error "unsupported block type #{ typ }"
+
+    types[typ] props
+}
