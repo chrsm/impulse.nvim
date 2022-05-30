@@ -3,7 +3,7 @@
 all: build
 
 build:
-	cd lua && yue .
+	cd yue && yue -l -s -t ../lua .
 
 clean:
-	cd lua && find . -type f -name '*.lua' -delete
+	find . -type f -name '*.lua' -delete
