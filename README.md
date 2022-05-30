@@ -36,6 +36,9 @@ packer.startup (use) ->
     "chrsm/impulse.nvim"
     config: ->
       require("impulse").setup!
+    requires:
+      * "nvim-lua/plenary.nvim"
+      * "nvim-telescope/telescope.nvim"
   }
 ```
 
@@ -50,6 +53,7 @@ packer.startup(function(use)
     config = function()
       require("impulse").setup({})
     end,
+    requires = { "nvim-lua/plenary.nvim", "nvim-telescope/telescope.nvim" },
   }
 end)
 ```
