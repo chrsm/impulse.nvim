@@ -6,6 +6,22 @@ impulse.nvim
 It is written in [Yuescript][1].
 
 
+Before Installing
+===
+
+In order to use this plugin, you need to have a [Notion integration][2].
+
+Only admins of a Notion workspace can set up integrations, and an integration
+**must be invited** to the page you wish for it to be able to retrieve.
+It's a bit silly, but if you are organized in your Notion use, you should be
+able to invite it to a top-level "page" and give it access to everything
+underneath.
+
+The way impulse.nvim currently interacts with Notion is purely read-only, so
+your integration can drop update/insert permissions for now. If such
+functionality is ever implemented, you can update the permissions easily.
+
+
 Functions
 ===
 
@@ -19,6 +35,7 @@ Example keybinds in .vim
 nnoremap <leader>vs :lua require("impulse").menu_search()<CR>
 nnoremap <leader>vl :lua require("impulse").follow_link()<CR>
 ```
+
 
 Install
 ===
@@ -64,7 +81,18 @@ Configuration Options
 
 ```moonscript
 {
+  -- Your notion API key. 
+  -- Get one by creating an integration here: https://www.notion.so/my-integrations
+  -- This plugin does not update or modify any pages, so you can set
+  -- "Read content" as the only option if you prefer.
+  --
+  -- It is possible that impulse will be updated with write abilities at some
+  -- point.
   api_key: "NOTION API KEY"
+
+  -- If always_refetch is true, every time you search-and-select or follow a
+  -- link, that page's block set will be pulled again. Useful if you are
+  -- following live updates.
   always_refetch: false or true
 }
 ```
@@ -80,3 +108,4 @@ Contributing
 
 
 [1]: https://github.com/pigpigyyy/Yuescript
+[2]: https://www.notion.so/my-integrations
