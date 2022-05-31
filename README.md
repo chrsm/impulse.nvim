@@ -2,9 +2,10 @@ impulse.nvim
 ===
 
 `impulse.nvim` is a neovim plugin for viewing Notion.so pages. It converts
-Notion blocks to Markdown for viewing.
+Notion blocks to Markdown for viewing. It is written in [Yuescript][1].
 
-It is written in [Yuescript][1].
+Currently, impulse does not support updating Notion pages. I'm still working on
+implementing that functionality. Please feel free to contribute!
 
 
 Screenshots
