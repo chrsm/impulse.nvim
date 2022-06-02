@@ -83,6 +83,15 @@ impulse._fetch = (id) ->
 
   blocks
 
+link_pats =
+  * gmatch: "(%[.+%]%(impulse://[^/]+/[^%)]+%))", match: (v) ->
+    name, typ, block_id = v\match "%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)"
+    { name, typ, block_id }
+
+  * gmatch: "(%[.+%]%(https://www%.notion%.so/.+%))", match: (v) ->
+    block_id = v\match "[/-]([a-zA-Z0-9]+)%)"
+    { "", "page", block_id }
+
 -- follow_link: jump to a specific page in notion based on an `impulse://page/` link.
 impulse.follow_link = ->
   -- where are we?
@@ -90,14 +99,16 @@ impulse.follow_link = ->
   col = vim.fn.col "."
 
   -- we're going to be lazy here and gmatch out links we can handle.
-  name, typ, block_id = nil, nil
-  for v in ln\gmatch "(%[.+%]%(impulse://[^/]+/[^%)]+%))"
-    -- find where this one starts & ends
-    s, e = ln\find v, 1, true -- plain!
+  name, typ, block_id = nil, nil, nil
 
-    -- are we _inside_ of this link somewhere?
-    if s <= col and e >= col
-      name, typ, block_id = ln\match "%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)"
+  for pats in *link_pats
+    for v in ln\gmatch pats.gmatch
+      -- find where this one starts & ends
+      s, e = ln\find v, 1, true -- plain!
+
+      -- are we _inside_ of this link somewhere?
+      if s <= col and e >= col
+        { name, typ, block_id } = pats.match v
 
   unless block_id
     vim.notify "impulse.nvim: no link found on current line"
@@ -106,12 +117,19 @@ impulse.follow_link = ->
   if typ != "page"
     error "impulse.nvim: currently, cannot follow link to non-page (#{ typ }, #{ block_id })"
 
+  -- get the real page name
+  pg = impulse.client\get_page block_id
+  unless pg
+    error "impulse.nvim: unable to retrieve page #{ block_id }"
+
+  name = pg.properties.title.title[1].plain_text
+
   -- fetch it + all child blocks
   -- eventually, this should probably swap-to then sync, not what it does rn
   content = impulse._fetch block_id
 
   b = with create_buffer block_id
-    \set_name (name or "(no name parsed, report bug)")
+    \set_name (name or "(no name found)")
     if \empty! or impulse.config.always_refetch
       \set_content to_md (impulse._fetch block_id)
     \focus!

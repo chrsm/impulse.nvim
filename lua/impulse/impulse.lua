@@ -102,41 +102,76 @@ impulse._fetch = function(id) -- 60
   until more == false -- 82
   return blocks -- 84
 end -- 60
-impulse.follow_link = function() -- 87
-  local ln = vim.api.nvim_get_current_line() -- 89
-  local col = vim.fn.col(".") -- 90
-  local name, typ, block_id = nil, nil -- 93
-  for v in ln:gmatch("(%[.+%]%(impulse://[^/]+/[^%)]+%))") do -- 94
-    local s, e = ln:find(v, 1, true) -- 96
-    if s <= col and e >= col then -- 99
-      name, typ, block_id = ln:match("%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)") -- 100
-    end -- 99
-  end -- 100
-  if not block_id then -- 102
-    vim.notify("impulse.nvim: no link found on current line") -- 103
-    return -- 104
-  end -- 102
-  if typ ~= "page" then -- 106
-    error("impulse.nvim: currently, cannot follow link to non-page (" .. tostring(typ) .. ", " .. tostring(block_id) .. ")") -- 107
-  end -- 106
-  local content = impulse._fetch(block_id) -- 111
-  local b -- 113
-  do -- 113
-    local _with_0 = create_buffer(block_id) -- 113
-    _with_0:set_name((name or "(no name parsed, report bug)")) -- 114
-    if _with_0:empty() or impulse.config.always_refetch then -- 115
-      _with_0:set_content(to_md((impulse._fetch(block_id)))) -- 116
-    end -- 115
-    _with_0:focus() -- 117
-    b = _with_0 -- 113
+local link_pats = { -- 87
+  { -- 87
+    gmatch = "(%[.+%]%(impulse://[^/]+/[^%)]+%))", -- 87
+    match = function(v) -- 87
+      local name, typ, block_id = v:match("%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)") -- 88
+      return { -- 89
+        name, -- 89
+        typ, -- 89
+        block_id -- 89
+      } -- 89
+    end -- 87
+  }, -- 87
+  { -- 91
+    gmatch = "(%[.+%]%(https://www%.notion%.so/.+%))", -- 91
+    match = function(v) -- 91
+      local block_id = v:match("[/-]([a-zA-Z0-9]+)%)") -- 92
+      return { -- 93
+        "", -- 93
+        "page", -- 93
+        block_id -- 93
+      } -- 93
+    end -- 91
+  } -- 91
+} -- 86
+impulse.follow_link = function() -- 96
+  local ln = vim.api.nvim_get_current_line() -- 98
+  local col = vim.fn.col(".") -- 99
+  local name, typ, block_id = nil, nil, nil -- 102
+  for _index_0 = 1, #link_pats do -- 104
+    local pats = link_pats[_index_0] -- 104
+    for v in ln:gmatch(pats.gmatch) do -- 105
+      local s, e = ln:find(v, 1, true) -- 107
+      if s <= col and e >= col then -- 110
+        do -- 111
+          local _obj_0 = pats.match(v) -- 111
+          name, typ, block_id = _obj_0[1], _obj_0[2], _obj_0[3] -- 111
+        end -- 111
+      end -- 110
+    end -- 111
+  end -- 111
+  if not block_id then -- 113
+    vim.notify("impulse.nvim: no link found on current line") -- 114
+    return -- 115
   end -- 113
-end -- 87
-impulse.setup = function(opt) -- 120
-  if opt == nil then -- 120
-    opt = { } -- 120
-  end -- 120
-  impulse.config = vim.tbl_deep_extend("force", impulse.config, opt) -- 121
-  impulse.client = Notion(impulse.config.api_key) -- 122
-end -- 120
-_module_0 = impulse -- 124
-return _module_0 -- 124
+  if typ ~= "page" then -- 117
+    error("impulse.nvim: currently, cannot follow link to non-page (" .. tostring(typ) .. ", " .. tostring(block_id) .. ")") -- 118
+  end -- 117
+  local pg = impulse.client:get_page(block_id) -- 121
+  if not pg then -- 122
+    error("impulse.nvim: unable to retrieve page " .. tostring(block_id)) -- 123
+  end -- 122
+  name = pg.properties.title.title[1].plain_text -- 125
+  local content = impulse._fetch(block_id) -- 129
+  local b -- 131
+  do -- 131
+    local _with_0 = create_buffer(block_id) -- 131
+    _with_0:set_name((name or "(no name found)")) -- 132
+    if _with_0:empty() or impulse.config.always_refetch then -- 133
+      _with_0:set_content(to_md((impulse._fetch(block_id)))) -- 134
+    end -- 133
+    _with_0:focus() -- 135
+    b = _with_0 -- 131
+  end -- 131
+end -- 96
+impulse.setup = function(opt) -- 138
+  if opt == nil then -- 138
+    opt = { } -- 138
+  end -- 138
+  impulse.config = vim.tbl_deep_extend("force", impulse.config, opt) -- 139
+  impulse.client = Notion(impulse.config.api_key) -- 140
+end -- 138
+_module_0 = impulse -- 142
+return _module_0 -- 142
