@@ -104,12 +104,24 @@ Configuration Options
   --
   -- It is possible that impulse will be updated with write abilities at some
   -- point.
+  --
+  -- DEFAULT: os.getenv "NOTION_SECRET"
   api_key: "NOTION API KEY"
 
   -- If always_refetch is true, every time you search-and-select or follow a
   -- link, that page's block set will be pulled again. Useful if you are
   -- following live updates.
+  --
+  -- DEFAULT: false
   always_refetch: false or true
+
+  -- Whether or not to allow `follow_link` to open a non-impulse URL.
+  -- If false, nothing will happen with follow_link.
+  -- If true, impulse will use xdg-open.
+  -- If a path is specified or name of a browser in $PATH, impulse will use it.
+  --
+  -- DEFAULT: false
+  open_in_browser: false, true or "string browser"
 }
 ```
 

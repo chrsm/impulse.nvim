@@ -1,5 +1,7 @@
 import "http.request" as request
 
+import "plenary.job" as Job
+
 import "impulse.api" as Notion
 import "impulse.buffer" as Buffer
 import "impulse.types" as NTypes
@@ -18,6 +20,11 @@ impulse =
   config:
     api_key: os.getenv "NOTION_SECRET"
     always_refetch: false
+    -- options:
+    --   * false - do nothing with follow_link
+    --   * true  - use xdg-open
+    --   * "/path/to/browser or name" - open link in a specific browser
+    open_in_browser: false
 
 -- search: use notion's search API to look for a page
 impulse.search = (query = "") ->
@@ -100,6 +107,10 @@ link_pats =
     block_id = v\match "[/-]([a-zA-Z0-9]+)%)"
     { "", "page", block_id }
 
+  * gmatch: "(%[.+%]%(.+%))", match: (v) ->
+    url = v\match "%((.+)%)"
+    { "", "open-link", url }
+
 -- follow_link: jump to a specific page in notion based on an `impulse://page/` link.
 impulse.follow_link = ->
   -- where are we?
@@ -122,8 +133,21 @@ impulse.follow_link = ->
     vim.notify "impulse.nvim: no link found on current line"
     return
 
-  if typ != "page"
+  if typ != "page" and typ != "open-link"
     error "impulse.nvim: currently, cannot follow link to non-page (#{ typ }, #{ block_id })"
+
+  if typ == "open-link"
+    with impulse.config
+      unless .open_in_browser
+        error "impulse.nvim: open_in_browser set to #{ impulse.config.open_in_browser }"
+
+      exec = "xdg-open"
+      if (type .open_in_browser) == "string"
+        exec = .open_in_browser
+
+      j = Job\new command: exec, args: { block_id }
+      j\start!
+    return
 
   -- get the real page name
   pg = impulse.client\get_page block_id
