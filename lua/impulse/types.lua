@@ -1255,7 +1255,7 @@ do -- 278
   local _parent_0 = Block -- 278
   local _base_0 = { -- 278
     to_md = function(self) -- 283
-      return "[linkpreview-" .. tostring(self:get_id()) .. "](" .. tostring(self.content.url) .. ") ++ " .. tostring(inspect(self.properties)) -- 284
+      return "[link-preview](" .. tostring(self.content.url) .. ")" -- 284
     end -- 278
   } -- 278
   if _base_0.__index == nil then -- 278

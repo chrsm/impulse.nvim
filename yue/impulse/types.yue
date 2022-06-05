@@ -281,7 +281,7 @@ class LinkPreview extends Block
     @can_md = true
 
   to_md: =>
-    "[linkpreview-#{ @\get_id! }](#{ @content.url }) ++ #{ inspect @properties }"
+    "[link-preview](#{ @content.url })"
 
 class SyncedBlock extends Block
   new: (props) =>
