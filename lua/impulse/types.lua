@@ -1300,7 +1300,7 @@ do -- 286
   local _parent_0 = Block -- 286
   local _base_0 = { -- 286
     to_md = function(self) -- 291
-      return "[syncedblock-" .. tostring(self:get_id()) .. "](impulse://block/" .. tostring(self:get_id()) .. ") ++ " .. tostring(inspect(self.content)) -- 292
+      return "[start-synced-block](impulse://block/" .. tostring(self:get_id()) .. ")" -- 292
     end -- 286
   } -- 286
   if _base_0.__index == nil then -- 286

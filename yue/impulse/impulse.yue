@@ -72,8 +72,16 @@ impulse._fetch = (id) ->
     for b in *resp.results
       block = NTypes.to_type b.type, b
 
-      if block\has_children! and block.type != "child_page" and block.type != "child_database"
-        block.children = impulse._fetch b.id
+      if block\has_children!
+        switch block.type
+          when "child_page"
+            block.children = {}
+          when "child_database"
+            block.children = {}
+          when "synced_block"
+            block.children = impulse._fetch block.content.synced_from.block_id
+          else
+            block.children = impulse._fetch b.id
 
       blocks[] = block
     

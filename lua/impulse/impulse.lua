@@ -92,86 +92,97 @@ impulse._fetch = function(id) -- 60
     for _index_0 = 1, #_list_0 do -- 72
       local b = _list_0[_index_0] -- 72
       local block = NTypes.to_type(b.type, b) -- 73
-      if block:has_children() and block.type ~= "child_page" and block.type ~= "child_database" then -- 75
-        block.children = impulse._fetch(b.id) -- 76
+      if block:has_children() then -- 75
+        do -- 76
+          local _exp_0 = block.type -- 76
+          if "child_page" == _exp_0 then -- 77
+            block.children = { } -- 78
+          elseif "child_database" == _exp_0 then -- 79
+            block.children = { } -- 80
+          elseif "synced_block" == _exp_0 then -- 81
+            block.children = impulse._fetch(block.content.synced_from.block_id) -- 82
+          else -- 84
+            block.children = impulse._fetch(b.id) -- 84
+          end -- 84
+        end -- 84
       end -- 75
-      blocks[#blocks + 1] = block -- 78
-    end -- 79
-    more = resp.has_more -- 80
-    cur = resp.next_cursor -- 81
-  until more == false -- 82
-  return blocks -- 84
-end -- 60
-local link_pats = { -- 87
-  { -- 87
-    gmatch = "(%[.+%]%(impulse://[^/]+/[^%)]+%))", -- 87
-    match = function(v) -- 87
-      local name, typ, block_id = v:match("%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)") -- 88
-      return { -- 89
-        name, -- 89
-        typ, -- 89
-        block_id -- 89
-      } -- 89
+      blocks[#blocks + 1] = block -- 86
     end -- 87
-  }, -- 87
-  { -- 91
-    gmatch = "(%[.+%]%(https://www%.notion%.so/.+%))", -- 91
-    match = function(v) -- 91
-      local block_id = v:match("[/-]([a-zA-Z0-9]+)%)") -- 92
-      return { -- 93
-        "", -- 93
-        "page", -- 93
-        block_id -- 93
-      } -- 93
-    end -- 91
-  } -- 91
-} -- 86
-impulse.follow_link = function() -- 96
-  local ln = vim.api.nvim_get_current_line() -- 98
-  local col = vim.fn.col(".") -- 99
-  local name, typ, block_id = nil, nil, nil -- 102
-  for _index_0 = 1, #link_pats do -- 104
-    local pats = link_pats[_index_0] -- 104
-    for v in ln:gmatch(pats.gmatch) do -- 105
-      local s, e = ln:find(v, 1, true) -- 107
-      if s <= col and e >= col then -- 110
-        do -- 111
-          local _obj_0 = pats.match(v) -- 111
-          name, typ, block_id = _obj_0[1], _obj_0[2], _obj_0[3] -- 111
-        end -- 111
-      end -- 110
-    end -- 111
-  end -- 111
-  if not block_id then -- 113
-    vim.notify("impulse.nvim: no link found on current line") -- 114
-    return -- 115
-  end -- 113
-  if typ ~= "page" then -- 117
-    error("impulse.nvim: currently, cannot follow link to non-page (" .. tostring(typ) .. ", " .. tostring(block_id) .. ")") -- 118
-  end -- 117
-  local pg = impulse.client:get_page(block_id) -- 121
-  if not pg then -- 122
-    error("impulse.nvim: unable to retrieve page " .. tostring(block_id)) -- 123
-  end -- 122
-  name = pg.properties.title.title[1].plain_text -- 125
-  local content = impulse._fetch(block_id) -- 129
-  local b -- 131
-  do -- 131
-    local _with_0 = create_buffer(block_id) -- 131
-    _with_0:set_name((name or "(no name found)")) -- 132
-    if _with_0:empty() or impulse.config.always_refetch then -- 133
-      _with_0:set_content(to_md((impulse._fetch(block_id)))) -- 134
-    end -- 133
-    _with_0:focus() -- 135
-    b = _with_0 -- 131
-  end -- 131
-end -- 96
-impulse.setup = function(opt) -- 138
-  if opt == nil then -- 138
-    opt = { } -- 138
-  end -- 138
-  impulse.config = vim.tbl_deep_extend("force", impulse.config, opt) -- 139
-  impulse.client = Notion(impulse.config.api_key) -- 140
-end -- 138
-_module_0 = impulse -- 142
-return _module_0 -- 142
+    more = resp.has_more -- 88
+    cur = resp.next_cursor -- 89
+  until more == false -- 90
+  return blocks -- 92
+end -- 60
+local link_pats = { -- 95
+  { -- 95
+    gmatch = "(%[.+%]%(impulse://[^/]+/[^%)]+%))", -- 95
+    match = function(v) -- 95
+      local name, typ, block_id = v:match("%[(.+)%]%(impulse://([^/]+)/([^%)]+)%)") -- 96
+      return { -- 97
+        name, -- 97
+        typ, -- 97
+        block_id -- 97
+      } -- 97
+    end -- 95
+  }, -- 95
+  { -- 99
+    gmatch = "(%[.+%]%(https://www%.notion%.so/.+%))", -- 99
+    match = function(v) -- 99
+      local block_id = v:match("[/-]([a-zA-Z0-9]+)%)") -- 100
+      return { -- 101
+        "", -- 101
+        "page", -- 101
+        block_id -- 101
+      } -- 101
+    end -- 99
+  } -- 99
+} -- 94
+impulse.follow_link = function() -- 104
+  local ln = vim.api.nvim_get_current_line() -- 106
+  local col = vim.fn.col(".") -- 107
+  local name, typ, block_id = nil, nil, nil -- 110
+  for _index_0 = 1, #link_pats do -- 112
+    local pats = link_pats[_index_0] -- 112
+    for v in ln:gmatch(pats.gmatch) do -- 113
+      local s, e = ln:find(v, 1, true) -- 115
+      if s <= col and e >= col then -- 118
+        do -- 119
+          local _obj_0 = pats.match(v) -- 119
+          name, typ, block_id = _obj_0[1], _obj_0[2], _obj_0[3] -- 119
+        end -- 119
+      end -- 118
+    end -- 119
+  end -- 119
+  if not block_id then -- 121
+    vim.notify("impulse.nvim: no link found on current line") -- 122
+    return -- 123
+  end -- 121
+  if typ ~= "page" then -- 125
+    error("impulse.nvim: currently, cannot follow link to non-page (" .. tostring(typ) .. ", " .. tostring(block_id) .. ")") -- 126
+  end -- 125
+  local pg = impulse.client:get_page(block_id) -- 129
+  if not pg then -- 130
+    error("impulse.nvim: unable to retrieve page " .. tostring(block_id)) -- 131
+  end -- 130
+  name = pg.properties.title.title[1].plain_text -- 133
+  local content = impulse._fetch(block_id) -- 137
+  local b -- 139
+  do -- 139
+    local _with_0 = create_buffer(block_id) -- 139
+    _with_0:set_name((name or "(no name found)")) -- 140
+    if _with_0:empty() or impulse.config.always_refetch then -- 141
+      _with_0:set_content(to_md((impulse._fetch(block_id)))) -- 142
+    end -- 141
+    _with_0:focus() -- 143
+    b = _with_0 -- 139
+  end -- 139
+end -- 104
+impulse.setup = function(opt) -- 146
+  if opt == nil then -- 146
+    opt = { } -- 146
+  end -- 146
+  impulse.config = vim.tbl_deep_extend("force", impulse.config, opt) -- 147
+  impulse.client = Notion(impulse.config.api_key) -- 148
+end -- 146
+_module_0 = impulse -- 150
+return _module_0 -- 150

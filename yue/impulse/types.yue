@@ -289,7 +289,7 @@ class SyncedBlock extends Block
     @can_md = true
 
   to_md: =>
-    "[syncedblock-#{ @\get_id! }](impulse://block/#{ @\get_id! }) ++ #{ inspect @content }"
+    "[start-synced-block](impulse://block/#{ @\get_id! })"
 
 class Template extends Block
   new: (props) =>

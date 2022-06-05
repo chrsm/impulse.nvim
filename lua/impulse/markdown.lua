@@ -34,7 +34,7 @@ to_md = function(blocks, ident) -- 3
       else -- 24
         r[#r + 1] = spc .. md -- 24
       end -- 21
-      if v:has_children() and v.type ~= "child_page" and v.type ~= "child_database" then -- 26
+      if v.children and v.type ~= "child_page" and v.type ~= "child_database" then -- 26
         local rch = to_md(v.children, ident + 2) -- 27
         if v.type == "table" and v.content.has_column_header then -- 30
           local head = "|---" -- 31
@@ -46,14 +46,17 @@ to_md = function(blocks, ident) -- 3
           local v = rch[_index_1] -- 36
           r[#r + 1] = v -- 36
         end -- 36
+        if v.type == "synced_block" then -- 39
+          r[#r + 1] = "[end-synced-block]" -- 40
+        end -- 39
       end -- 26
       _continue_0 = true -- 11
-    until true -- 36
-    if not _continue_0 then -- 36
-      break -- 36
-    end -- 36
-  end -- 36
-  return r -- 38
+    until true -- 40
+    if not _continue_0 then -- 40
+      break -- 40
+    end -- 40
+  end -- 40
+  return r -- 42
 end -- 3
-_module_0 = to_md -- 40
-return _module_0 -- 40
+_module_0 = to_md -- 44
+return _module_0 -- 44
