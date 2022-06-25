@@ -1,4 +1,4 @@
-import "http.request" as request
+import "plenary.curl" as curl
 
 class Notion
   @base_url: "https://api.notion.com"
@@ -9,26 +9,25 @@ class Notion
     @api_key = api_key
 
   _request: (api, method = "GET", body = nil, timeout = @@timeout) =>
-    req = request.new_from_uri "#{ @@base_url }/#{ api }"
-    with req
-      .headers\upsert ":method", method
-      .headers\upsert "user-agent", "impulse.nvim-0.1-alpha"
-      .headers\append "x-req-by", "impulse.nvim"
-      .headers\append "accept", "application/json"
-      .headers\append "content-type", "application/json"
-      .headers\append "authorization", "Bearer #{ @api_key }"
-      .headers\append "notion-version", "2022-02-22"
+    opt =
+      url: "#{ @@base_url }/#{ api }"
+      accept: "application/json"
+      :method
+      headers:
+        ["user-agent"]: "impulse.nvim-0.1-alpha"
+        ["x-req-by"]: "impulse.nvim"
+        ["content-type"]: "application/json"
+        authorization: "Bearer #{ @api_key }"
+        ["notion-version"]: "2022-02-22"
 
-      if body
-        vim.json.encode body
-          |> \set_body
+    if body
+      opt.body = vim.json.encode body
 
-    head, resp = req\go timeout
-    unless head
+    resp = curl.request opt
+    unless resp.status == 200
       return error "unable to make request to #{ api }"
-    
-    resp\get_body_as_string!
-      |> vim.json.decode
+
+    vim.json.decode resp.body
 
   -- get_page: retrieve a page's properties
   -- this does NOT get content of the page; use `get_blocks` with the page ID.

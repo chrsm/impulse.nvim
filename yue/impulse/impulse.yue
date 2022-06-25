@@ -1,5 +1,3 @@
-import "http.request" as request
-
 import "plenary.job" as Job
 
 import "impulse.api" as Notion

@@ -56,15 +56,10 @@ nnoremap <leader>vl :lua require("impulse").follow_link()<CR>
 Install
 ===
 
-impulse requires `http` from luarocks.
-also, idk man, i use packer.
-
 In yue/moonscript:
 
 ```moonscript
 packer.startup (use) ->
-  use_rocks "http"
-
   use {
     "chrsm/impulse.nvim"
     config: ->
@@ -79,8 +74,6 @@ In lua:
 
 ```lua
 packer.startup(function(use)
-  use_rocks("http")
-
   use {
     "chrsm/impulse.nvim",
     config = function()
